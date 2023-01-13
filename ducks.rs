@@ -4,6 +4,13 @@ use human_bytes::human_bytes;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
+
+    //  first arg is command path itself
+    if args.len() < 2 {
+        println!("Error: you need to provide a directory path as first argument.");
+        return;
+    }
+
     let dir = &args[1];
     let limit = args.get(2).unwrap_or(&String::from("10")).parse::<usize>().unwrap();
 
@@ -30,11 +37,21 @@ fn main() {
     }
 
     entries.sort_by(|a, b| b.1.cmp(&a.1));
+
+    let max_path_len = entries
+        .iter()
+        .map(|entry| entry.0.len())
+        .max()
+        .unwrap_or(0);
+
     for (i, entry) in entries.iter().enumerate() {
         if i >= limit {
             break;
         }
         let size = human_bytes(entry.1 as f64);
-        println!("{} - {}", entry.0, size);
+        let path = &entry.0;
+        print!("{:<width$}  ", path, width = max_path_len);
+        let _ = std::io::stdout();
+        println!("{}", size);
     }
 }
