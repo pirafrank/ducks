@@ -24,9 +24,14 @@ fn main() {
             let size = fs::read_dir(&path)
                 .unwrap()
                 .map(|res| res.unwrap())
-                .map(|res| res.path())
-                .filter(|path| path.is_file())
-                .map(|path| fs::metadata(path).unwrap().len())
+                .filter_map(|res| {
+                    let path = res.path();
+                    if path.is_file() {
+                        Some(fs::metadata(path).unwrap().len())
+                    } else {
+                        None
+                    }
+                })
                 .sum();
 
             entries.push((path.to_str().unwrap().to_string(), size));
