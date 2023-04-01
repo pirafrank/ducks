@@ -1,6 +1,7 @@
 use std::env;
 use std::fs;
 use human_bytes::human_bytes;
+use rayon::prelude::*;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -44,7 +45,7 @@ fn main() {
     entries.sort_by(|a, b| b.1.cmp(&a.1));
 
     let max_path_len = entries
-        .iter()
+        .par_iter()
         .map(|entry| entry.0.len())
         .max()
         .unwrap_or(0);
