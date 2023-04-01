@@ -1,7 +1,26 @@
 use std::env;
 use std::fs;
+use std::io::{self};
+use std::path::Path;
 use human_bytes::human_bytes;
 use rayon::prelude::*;
+
+fn get_dir_size(path: &Path) -> io::Result<u64> {
+    let mut total_size = 0;
+    for entry in fs::read_dir(&path)? {
+        let entry = entry?;
+        let path = entry.path();
+        let size = if path.is_dir() {
+            get_dir_size(&path)?
+        } else if path.is_file() {
+            fs::metadata(&path)?.len()
+        } else {
+            0
+        };
+        total_size += size;
+    }
+    Ok(total_size)
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -21,29 +40,23 @@ fn main() {
         let entry = entry.unwrap();
         let path = entry.path();
 
-        if path.is_dir() {
-            let size = fs::read_dir(&path)
-                .unwrap()
-                .map(|res| res.unwrap())
-                .filter_map(|res| {
-                    let path = res.path();
-                    if path.is_file() {
-                        Some(fs::metadata(path).unwrap().len())
-                    } else {
-                        None
-                    }
-                })
-                .sum();
-
-            entries.push((path.to_str().unwrap().to_string(), size));
+        let size = if path.is_dir() {
+            get_dir_size(&path)
         } else if path.is_file() {
-            let size = fs::metadata(&path).unwrap().len();
-            entries.push((path.to_str().unwrap().to_string(), size));
-        }
+            Ok(fs::metadata(&path).unwrap().len())
+        } else {
+            Ok(0)
+        };
+
+        entries.push((path.to_str().unwrap().to_string(), size));
     }
 
-    entries.sort_by(|a, b| b.1.cmp(&a.1));
+    // sort descending
+    entries.sort_by(|a, b| {
+        (b.1).as_ref().unwrap().cmp(&(a.1).as_ref().unwrap())
+    });
 
+    // find row with max length (column display)
     let max_path_len = entries
         .par_iter()
         .map(|entry| entry.0.len())
@@ -54,7 +67,7 @@ fn main() {
         if i >= limit {
             break;
         }
-        let size = human_bytes(entry.1 as f64);
+        let size = human_bytes(*(entry.1).as_ref().unwrap() as f64);
         let path = &entry.0;
         print!("{:<width$}  ", path, width = max_path_len);
         let _ = std::io::stdout();
