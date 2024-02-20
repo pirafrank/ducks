@@ -14,3 +14,7 @@ rayon = "1.7.0"
 [[bin]]
 name = "ducks"
 path = "ducks.rs"
+
+[profile.release]
+strip = true
+
